@@ -8,7 +8,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes - authentication gerektirmeyen sayfalar
-  const publicPaths = ["/", "/api/auth", "/", "/unauthorized"]
+  const publicPaths = ["/", "/api/auth", "/login", "/unauthorized"]
   const isPublicPath = publicPaths.some(path => pathname.startsWith(path))
 
   if (isPublicPath) {
@@ -17,7 +17,7 @@ export async function middleware(request: NextRequest) {
 
   // Protected routes - authentication gerektiren sayfalar
   if (!token) {
-    const loginUrl = new URL("/", request.url)
+    const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("callbackUrl", pathname)
     return NextResponse.redirect(loginUrl)
   }
