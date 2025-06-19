@@ -1,12 +1,12 @@
 // app/page.tsx
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/features/auth/authOptions"
-import Link from "next/link"
-import Image from "next/image"
-import LogoutButton from "@/features/auth/components/LogoutButton"
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/features/auth/authOptions";
+import Link from "next/link";
+import Image from "next/image";
+import LogoutButton from "@/features/auth/components/LogoutButton";
 
 export default async function Home() {
-  const session = await getServerSession(authOptions)
+  const session = await getServerSession(authOptions);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -23,7 +23,15 @@ export default async function Home() {
                   <span className="text-sm text-gray-700">
                     Hoş geldin, {session.user?.name}
                   </span>
-                 <LogoutButton /> 
+                  {session.user.role === "admin" && (
+                    <Link
+                      href="/admin"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors"
+                    >
+                      Admin
+                    </Link>
+                  )}
+                  <LogoutButton />
                 </>
               ) : (
                 <Link
@@ -49,7 +57,7 @@ export default async function Home() {
             height={38}
             priority
           />
-          
+
           <div className="text-center max-w-2xl">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
               Next.js Auth0 Entegrasyonu
@@ -88,5 +96,5 @@ export default async function Home() {
         </main>
       </div>
     </div>
-  )
+  );
 }
