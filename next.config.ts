@@ -1,26 +1,41 @@
 // next.config.ts
 import type { NextConfig } from "next";
+const isDev = process.env.NODE_ENV !== "production";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  images: {
+    domains: ["dev-xv4wsqgagzfop5bo.us.auth0.com"],
+    formats: ["image/webp", "image/avif"],
+  },
 
   async headers() {
+    const scriptSrc = [
+      "'self'",
+      process.env.AUTH0_ISSUER_BASE_URL,
+      isDev ? "'unsafe-eval' 'unsafe-inline'" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
     return [
       {
         source: "/(.*)",
         headers: [
           {
             key: "Content-Security-Policy",
-            value: `
-              default-src 'self';
-              script-src 'self' 'unsafe-eval' 'unsafe-inline' ${process.env.AUTH0_ISSUER_BASE_URL};
-              style-src 'self' 'unsafe-inline';
-              img-src 'self' data: blob: ${process.env.AUTH0_ISSUER_BASE_URL};
-              connect-src 'self' ${process.env.AUTH0_ISSUER_BASE_URL};
-              frame-src ${process.env.AUTH0_ISSUER_BASE_URL};
-            `
-              .replace(/\s{2,}/g, " ")
-              .trim(),
+            value: [
+              `default-src 'self'`,
+              `script-src ${scriptSrc}`,
+              `style-src 'self' 'unsafe-inline'`,
+              `img-src 'self' data:`,
+              `connect-src 'self' ${process.env.AUTH0_ISSUER_BASE_URL}`,
+              `frame-src 'none'`,
+              `object-src 'none'`,
+              `base-uri 'self'`,
+              `form-action 'self'`,
+              `upgrade-insecure-requests`,
+            ].join("; "),
           },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },

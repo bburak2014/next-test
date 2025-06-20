@@ -23,8 +23,8 @@ declare module "next-auth/jwt" {
   interface JWT {
     role?: string;
     sub?: string;
-    exp?: number;
     iat?: number;
+    exp?: number;
   }
 }
 
@@ -35,8 +35,12 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.AUTH0_CLIENT_SECRET!,
       issuer: process.env.AUTH0_ISSUER_BASE_URL,
       wellKnown: `${process.env.AUTH0_ISSUER_BASE_URL}/.well-known/openid-configuration`,
-
-      authorization: { params: { scope: "openid profile email" } },
+      authorization: {
+        params: {
+          scope: "openid profile email",
+          code_challenge_method: "S256",
+        },
+      },
       profile(profile, tokens) {
         const decoded = jwtDecode<DecodedIdToken>(tokens.id_token!);
         const roles = decoded["https://myapp.com/roles"] ?? [];
@@ -50,15 +54,33 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+
   session: {
     strategy: "jwt",
     maxAge: 24 * 60 * 60,
-    updateAge: 24 * 60 * 60,
+    updateAge: 60 * 60,
   },
+
+  cookies: {
+    sessionToken: {
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.session-token"
+          : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
+
   pages: {
     signIn: "/login",
     error: "/unauthorized",
   },
+
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -73,6 +95,7 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+
   events: {
     async signIn({ user }) {
       console.warn(`User signed in: ${user.role}`);
@@ -81,6 +104,7 @@ export const authOptions: NextAuthOptions = {
       console.warn("User signed out");
     },
   },
+
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
+  debug: process.env.NODE_ENV === 'development',
 };
