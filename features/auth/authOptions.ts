@@ -1,30 +1,30 @@
-import { NextAuthOptions, DefaultSession } from "next-auth"
-import Auth0Provider from "next-auth/providers/auth0"
-import {jwtDecode} from "jwt-decode"
+import { NextAuthOptions, DefaultSession } from "next-auth";
+import Auth0Provider from "next-auth/providers/auth0";
+import { jwtDecode } from "jwt-decode";
 
 interface DecodedIdToken {
-  sub?: string
-  "https://myapp.com/roles"?: string[]
+  sub?: string;
+  "https://myapp.com/roles"?: string[];
 }
 
 declare module "next-auth" {
   interface User {
-    role?: string
+    role?: string;
   }
   interface Session extends DefaultSession {
     user: DefaultSession["user"] & {
-      id?: string
-      role?: string
-    }
+      id?: string;
+      role?: string;
+    };
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    role?: string
-    sub?: string
-    exp?: number
-    iat?: number
+    role?: string;
+    sub?: string;
+    exp?: number;
+    iat?: number;
   }
 }
 
@@ -34,18 +34,19 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.AUTH0_CLIENT_ID!,
       clientSecret: process.env.AUTH0_CLIENT_SECRET!,
       issuer: process.env.AUTH0_ISSUER_BASE_URL,
+      wellKnown: `${process.env.AUTH0_ISSUER_BASE_URL}/.well-known/openid-configuration`,
+
       authorization: { params: { scope: "openid profile email" } },
       profile(profile, tokens) {
-        // ID token içindeki "https://myapp.com/roles" claim'ini decode et
-        const decoded = jwtDecode<DecodedIdToken>(tokens.id_token!)
-        const roles = decoded["https://myapp.com/roles"] ?? []
+        const decoded = jwtDecode<DecodedIdToken>(tokens.id_token!);
+        const roles = decoded["https://myapp.com/roles"] ?? [];
         return {
           id: profile.sub,
           name: profile.name,
           email: profile.email,
           image: profile.picture,
           role: roles[0] ?? "user",
-        }
+        };
       },
     }),
   ],
@@ -61,25 +62,25 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.sub = user.id
-        token.role = user.role
+        token.sub = user.id;
+        token.role = user.role;
       }
-      return token
+      return token;
     },
     async session({ session, token }) {
-      session.user.id = token.sub
-      session.user.role = token.role
-      return session
+      session.user.id = token.sub;
+      session.user.role = token.role;
+      return session;
     },
   },
   events: {
     async signIn({ user }) {
-      console.warn(`User signed in: ${user.role}`)
+      console.warn(`User signed in: ${user.role}`);
     },
     async signOut() {
-      console.warn("User signed out")
+      console.warn("User signed out");
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === "development",
-}
+};
