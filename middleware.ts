@@ -11,6 +11,18 @@ const MAX_REQUESTS = 60;
 type Entry = { count: number; firstRequestTime: number };
 const ipStore = new Map<string, Entry>();
 
+const CLEANUP_INTERVAL = 5 * 60 * 1000; 
+const ENTRY_TTL = 10 * WINDOW_SIZE_IN_MS; 
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of ipStore.entries()) {
+    if (now - entry.firstRequestTime > ENTRY_TTL) {
+      ipStore.delete(ip);
+    }
+  }
+}, CLEANUP_INTERVAL);
+
 export async function middleware(request: NextRequest) {
   const startTime = Date.now();
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -46,7 +58,7 @@ export async function middleware(request: NextRequest) {
 
   try {
     const token = await getToken({ req: request, secret });
-    
+
     if (!token) {
       logSecurityEvent("unauthorized_access", {
         ip,
@@ -73,7 +85,7 @@ export async function middleware(request: NextRequest) {
     }
 
     const response = NextResponse.next();
-    
+
     if (pathname.startsWith("/api")) {
       const duration = Date.now() - startTime;
       logApiCall({
