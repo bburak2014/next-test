@@ -1,4 +1,3 @@
-# docker-compose.yml
 version: '3.8'
 
 services:
@@ -13,15 +12,3 @@ services:
     environment:
       - NODE_ENV=production
     restart: unless-stopped
-  
-  # Redis for session storage (opsiyonel)
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-
-volumes:
-  redis_data:
