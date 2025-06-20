@@ -1,6 +1,7 @@
 import { NextAuthOptions, DefaultSession } from "next-auth";
 import Auth0Provider from "next-auth/providers/auth0";
 import { jwtDecode } from "jwt-decode";
+import { logAuthEvent, logError } from "@/utils/logger";
 
 interface DecodedIdToken {
   sub?: string;
@@ -42,15 +43,20 @@ export const authOptions: NextAuthOptions = {
         },
       },
       profile(profile, tokens) {
-        const decoded = jwtDecode<DecodedIdToken>(tokens.id_token!);
-        const roles = decoded["https://myapp.com/roles"] ?? [];
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          image: profile.picture,
-          role: roles[0] ?? "user",
-        };
+        try {
+          const decoded = jwtDecode<DecodedIdToken>(tokens.id_token!);
+          const roles = decoded["https://myapp.com/roles"] ?? [];
+          return {
+            id: profile.sub,
+            name: profile.name,
+            email: profile.email,
+            image: profile.picture,
+            role: roles[0] ?? "user",
+          };
+        } catch (error) {
+          logError(error, "Auth0 profile parsing");
+          throw error;
+        }
       },
     }),
   ],
@@ -97,11 +103,14 @@ export const authOptions: NextAuthOptions = {
   },
 
   events: {
-    async signIn({ user }) {
-      console.warn(`User signed in: ${user.role}`);
+    async signIn({ user, account }) {
+      logAuthEvent("sign_in", user.id, {
+        role: user.role,
+        provider: account?.provider
+      });
     },
-    async signOut() {
-      console.warn("User signed out");
+    async signOut({ session }) {
+      logAuthEvent("sign_out", session?.user?.id);
     },
   },
 

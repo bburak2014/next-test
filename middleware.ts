@@ -1,7 +1,7 @@
-// middleware.ts
 import { getToken, type JWT } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { logApiCall, logSecurityEvent, logError } from "@/utils/logger";
 
 const secret = process.env.NEXTAUTH_SECRET!;
 
@@ -12,9 +12,10 @@ type Entry = { count: number; firstRequestTime: number };
 const ipStore = new Map<string, Entry>();
 
 export async function middleware(request: NextRequest) {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const startTime = Date.now();
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const now = Date.now();
+  const { pathname } = request.nextUrl;
 
   let entry = ipStore.get(ip);
   if (!entry) {
@@ -30,31 +31,63 @@ export async function middleware(request: NextRequest) {
   }
 
   if (entry.count > MAX_REQUESTS) {
+    logSecurityEvent("rate_limit_exceeded", {
+      ip,
+      path: pathname,
+      method: request.method
+    });
     return new NextResponse("Too Many Requests", { status: 429 });
   }
 
-  const { pathname } = request.nextUrl;
   const publicPaths = ["/", "/login", "/unauthorized"];
-  const isPublic =
-    publicPaths.includes(pathname) || pathname.startsWith("/api/auth/");
+  const isPublic = publicPaths.includes(pathname) || pathname.startsWith("/api/auth/");
 
   if (isPublic) return NextResponse.next();
 
   try {
     const token = await getToken({ req: request, secret });
-    if (!token) return redirectToLogin(request, pathname);
+    
+    if (!token) {
+      logSecurityEvent("unauthorized_access", {
+        ip,
+        path: pathname,
+        method: request.method
+      });
+      return redirectToLogin(request, pathname);
+    }
 
     const ts = Math.floor(Date.now() / 1000);
-    if (token.exp && ts >= token.exp) return redirectToLogin(request, pathname);
+    if (token.exp && ts >= token.exp) {
+      return redirectToLogin(request, pathname);
+    }
 
     const jwtToken = token as JWT & { role?: string };
     if (pathname.startsWith("/admin") && jwtToken.role !== "admin") {
+      logSecurityEvent("admin_access_denied", {
+        ip,
+        path: pathname,
+        method: request.method,
+        userId: jwtToken.sub
+      });
       return NextResponse.redirect(new URL("/unauthorized", request.url));
     }
 
-    return NextResponse.next();
+    const response = NextResponse.next();
+    
+    if (pathname.startsWith("/api")) {
+      const duration = Date.now() - startTime;
+      logApiCall({
+        method: request.method,
+        path: pathname,
+        status: response.status,
+        duration,
+        userId: jwtToken.sub
+      });
+    }
+
+    return response;
   } catch (err) {
-    console.error("Middleware error:", err);
+    logError(err, "middleware");
     return redirectToLogin(request, pathname);
   }
 }
@@ -105,7 +138,6 @@ function redirectToLogin(request: NextRequest, pathname: string) {
     });
   });
 
-  console.warn(`Cleared cookies: ${uniqueCookies.join(", ")}`);
   return res;
 }
 
