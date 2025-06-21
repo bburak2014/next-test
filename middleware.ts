@@ -11,25 +11,47 @@ const MAX_REQUESTS = 60;
 type Entry = { count: number; firstRequestTime: number };
 const ipStore = new Map<string, Entry>();
 
-const CLEANUP_INTERVAL = 5 * 60 * 1000; 
-const ENTRY_TTL = 10 * WINDOW_SIZE_IN_MS; 
+const CLEANUP_INTERVAL = 1 * 60 * 1000;
+const ENTRY_TTL = 5 * WINDOW_SIZE_IN_MS;
+const MAX_IPSTORE_SIZE = 10000;
 
-setInterval(() => {
+let lastCleanup = Date.now();
+
+function cleanupIpStore() {
   const now = Date.now();
+
   for (const [ip, entry] of ipStore.entries()) {
     if (now - entry.firstRequestTime > ENTRY_TTL) {
       ipStore.delete(ip);
     }
   }
-}, CLEANUP_INTERVAL);
+
+  if (ipStore.size > MAX_IPSTORE_SIZE) {
+    const keysIterator = ipStore.keys();
+    for (let i = 0; i < 100; i++) {
+      const key = keysIterator.next().value;
+      if (!key) break;
+      ipStore.delete(key);
+    }
+  }
+}
 
 export async function middleware(request: NextRequest) {
-  const startTime = Date.now();
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const now = Date.now();
-  const { pathname } = request.nextUrl;
+
+  // Periyodik veya rastgele cleanup
+  if (now - lastCleanup > CLEANUP_INTERVAL) {
+    cleanupIpStore();
+    lastCleanup = now;
+  } else if (Math.random() < 0.1) {
+    cleanupIpStore();
+  }
+
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
   let entry = ipStore.get(ip);
+
   if (!entry) {
     entry = { count: 1, firstRequestTime: now };
     ipStore.set(ip, entry);
@@ -45,14 +67,16 @@ export async function middleware(request: NextRequest) {
   if (entry.count > MAX_REQUESTS) {
     logSecurityEvent("rate_limit_exceeded", {
       ip,
-      path: pathname,
-      method: request.method
+      path: request.nextUrl.pathname,
+      method: request.method,
     });
     return new NextResponse("Too Many Requests", { status: 429 });
   }
 
   const publicPaths = ["/", "/login", "/unauthorized"];
-  const isPublic = publicPaths.includes(pathname) || pathname.startsWith("/api/auth/");
+  const pathname = request.nextUrl.pathname;
+  const isPublic =
+    publicPaths.includes(pathname) || pathname.startsWith("/api/auth/");
 
   if (isPublic) return NextResponse.next();
 
@@ -63,7 +87,7 @@ export async function middleware(request: NextRequest) {
       logSecurityEvent("unauthorized_access", {
         ip,
         path: pathname,
-        method: request.method
+        method: request.method,
       });
       return redirectToLogin(request, pathname);
     }
@@ -79,7 +103,7 @@ export async function middleware(request: NextRequest) {
         ip,
         path: pathname,
         method: request.method,
-        userId: jwtToken.sub
+        userId: jwtToken.sub,
       });
       return NextResponse.redirect(new URL("/unauthorized", request.url));
     }
@@ -87,13 +111,13 @@ export async function middleware(request: NextRequest) {
     const response = NextResponse.next();
 
     if (pathname.startsWith("/api")) {
-      const duration = Date.now() - startTime;
+      const duration = Date.now() - now;
       logApiCall({
         method: request.method,
         path: pathname,
         status: response.status,
         duration,
-        userId: jwtToken.sub
+        userId: jwtToken.sub,
       });
     }
 
