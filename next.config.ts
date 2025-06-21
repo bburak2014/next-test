@@ -1,5 +1,7 @@
 // next.config.ts
 import type { NextConfig } from "next";
+
+const auth0Url = process.env.AUTH0_ISSUER_BASE_URL || '';
 const isDev = process.env.NODE_ENV !== "production";
 
 const nextConfig: NextConfig = {
@@ -10,13 +12,11 @@ const nextConfig: NextConfig = {
   },
 
   async headers() {
-    const scriptSrc = [
-      "'self'",
-      process.env.AUTH0_ISSUER_BASE_URL,
-      isDev ? "'unsafe-eval' 'unsafe-inline'" : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
+  const scriptSrc = [
+  "'self'",
+  auth0Url,
+  isDev ? "'unsafe-eval' 'unsafe-inline'" : "'unsafe-inline'",
+].filter(Boolean).join(' ');
 
     return [
       {
