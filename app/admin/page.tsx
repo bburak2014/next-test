@@ -1,3 +1,4 @@
+// app/admin/page.tsx
 import React from 'react'
 
  

@@ -10,7 +10,6 @@ export const metadata = {
 }
 
 export default async function LoginPage() {
-  // Eğer kullanıcı zaten giriş yapmışsa dashboard'a yönlendir
   const session = await getServerSession(authOptions)
   
   if (session) {

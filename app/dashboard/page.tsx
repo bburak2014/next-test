@@ -1,4 +1,4 @@
-// app/page.tsx
+// app/dashboard/page.tsx
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/features/auth/authOptions";
 import Link from "next/link";
@@ -10,7 +10,6 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -46,7 +45,6 @@ export default async function Home() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <div className="grid grid-rows-[1fr_auto] items-center justify-items-center min-h-[calc(100vh-64px)] p-8 pb-20 gap-16 sm:p-20">
         <main className="flex flex-col gap-8 row-start-1 items-center">
           <Image
