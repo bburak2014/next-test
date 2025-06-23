@@ -29,7 +29,8 @@
     "docker:build": "docker build -t next-auth .",
     "docker:run": "docker run -p 3000:3000 next-auth",
     "docker:compose": "docker-compose up -d",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "test": "jest"
   },
   "dependencies": {
     "jwt-decode": "^4.0.0",
@@ -44,13 +45,18 @@
     "@eslint/eslintrc": "^3",
     "@next/bundle-analyzer": "^15.3.3",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/jest": "^30.0.0",
     "@types/next-auth": "^3.13.0",
-    "@types/node": "^20",
+    "@types/node": "^20.19.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
     "husky": "^9.1.7",
+    "jest": "^30.0.2",
+    "jest-environment-jsdom": "^30.0.2",
     "lint-staged": "^15.0.0",
     "tailwindcss": "^4",
     "typescript": "^5"
